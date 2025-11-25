@@ -1,0 +1,64 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+# VARIABLES
+BOX_IMAGE = "debian/bookworm64"
+PROVIDER = "virtualbox"
+NOM_MAQUINA_VIRTUAL = "pj9f4a8_famehu"
+NUM_CPUS = 3
+MEMORIA_RAM = 3072
+HOSTNAME = "pj9f4a8-famehu.fjeclot.local"
+CARPETA_MAQ_FIS = "../projectes"
+CARPETA_MAQ_VIR = "/home/vagrant/projectes"
+
+# CONFIGURACIÓ DE LA MÀQUINA
+Vagrant.configure("2") do |config|
+
+  # BOX
+  config.vm.box = BOX_IMAGE
+
+  # CONFIGURACIÓ ESPECÍFICA DEL PROVIDER
+  config.vm.provider PROVIDER do |provider|
+    provider.name = NOM_MAQUINA_VIRTUAL
+    provider.memory = MEMORIA_RAM
+    provider.cpus = NUM_CPUS
+    provider.customize ['modifyvm', :id, '--clipboard', 'bidirectional']
+  end
+
+  # CONFIGURACIÓ GENERAL
+  config.vm.hostname = HOSTNAME
+
+  # Carpeta compartida
+  config.vm.synced_folder CARPETA_MAQ_FIS, CARPETA_MAQ_VIR
+
+  # Xarxa en mode Bridge
+  config.vm.network "public_network"
+
+  # Programari a instal·lar
+  config.vm.provision "shell", inline: <<-SHELL
+    # Actualització de paquets
+    sudo apt update
+
+    # Programari general
+    sudo apt install -y aptitude net-tools whois
+
+    # Instal·lació Docker
+    sudo apt-get -y install apt-transport-https ca-certificates curl gnupg
+
+    # Clau GPG
+    curl -fsSL https://download.docker.com/linux/debian/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker.gpg
+
+    # Repositori Docker
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker.gpg] \
+    https://download.docker.com/linux/debian bookworm stable" \
+    | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+    # Instal·lació Docker
+    sudo apt-get update
+    sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+
+    # Afegir usuari vagrant al grup docker
+    sudo gpasswd -a vagrant docker
+  SHELL
+
+end
